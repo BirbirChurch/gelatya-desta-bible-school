@@ -1,9 +1,10 @@
-import React from 'react';
-import { X, Printer, FileSpreadsheet, Download } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Printer, FileSpreadsheet, Download, Loader2 } from 'lucide-react';
 import { Course, GradeBreakdown, OfficialSignaturesConfig, ProgramType, Student } from '../types.ts';
 import { calculateStudentGPA, getCourseAssessmentItems, getEffectiveGradeValues, resolveGradeBreakdown } from '../utils/gradeCalculations.ts';
 import { CHURCH_LOGO } from '../assets/logo.ts';
 import { exportMasterSemesterGradeSheetToExcel } from '../utils/excelUtils.ts';
+import { downloadElementAsPdf, printElementDirectly } from '../utils/pdfExport.ts';
 
 interface MasterGradeReportPdfModalProps {
   students: Student[];
@@ -28,10 +29,22 @@ export const MasterGradeReportPdfModal: React.FC<MasterGradeReportPdfModalProps>
   onClose,
   initialProgram = 'ALL'
 }) => {
-  const [selectedProgram, setSelectedProgram] = React.useState<'ALL' | ProgramType>(initialProgram);
+  const [selectedProgram, setSelectedProgram] = useState<'ALL' | ProgramType>(initialProgram);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    setIsExportingPdf(true);
+    try {
+      const progLabel = selectedProgram === 'ALL' ? 'All_Programs' : selectedProgram;
+      const filename = `Master_Grade_Sheet_${progLabel}_${currentYear}_Sem${currentSemester}.pdf`;
+      await downloadElementAsPdf('printable-master-grade-report', filename, { orientation: 'landscape' });
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
 
   const handlePrint = () => {
-    window.print();
+    printElementDirectly('printable-master-grade-report');
   };
 
   const programs = selectedProgram === 'ALL' ? ['Diploma' as const, 'Degree' as const] : [selectedProgram as ProgramType];
@@ -41,7 +54,7 @@ export const MasterGradeReportPdfModal: React.FC<MasterGradeReportPdfModalProps>
     <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-xs z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl shadow-2xl max-w-6xl w-full flex flex-col overflow-hidden border border-slate-300 my-auto">
         {/* Modal Toolbar (hidden when printed) */}
-        <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-slate-900 text-white px-6 py-4 flex justify-between items-center no-print border-b border-emerald-800">
+        <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-slate-900 text-white px-6 py-4 flex flex-wrap justify-between items-center gap-3 no-print border-b border-emerald-800">
           <div className="flex items-center gap-2.5">
             <div className="p-2 bg-emerald-700/60 rounded-xl text-amber-300">
               <Printer className="w-5 h-5" />
@@ -71,21 +84,41 @@ export const MasterGradeReportPdfModal: React.FC<MasterGradeReportPdfModalProps>
             </div>
 
             <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={isExportingPdf}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3.5 py-2 rounded-xl font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+              title="አጠቃላይ የሴሚስተር ውጤቱን በፒዲኤፍ (.pdf) በቀጥታ አውርድ"
+            >
+              {isExportingPdf ? (
+                <Loader2 className="w-4 h-4 animate-spin text-white" />
+              ) : (
+                <Download className="w-4 h-4 text-white" />
+              )}
+              <span>{isExportingPdf ? 'ፒዲኤፍ እየተዘጋጀ...' : 'PDF አውርድ (.pdf)'}</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => exportMasterSemesterGradeSheetToExcel(students, courses, grades, currentYear, currentSemester, selectedProgram)}
               className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs px-3.5 py-2 rounded-xl font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
               title="አጠቃላይ ውጤቱን በማይክሮሶፍት ኤክሴል ፋይል አውርድ"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
-              <span>ኤክሴል አውርድ (.xlsx)</span>
+              <span>ኤክሴል (.xlsx)</span>
             </button>
+
             <button
+              type="button"
               onClick={handlePrint}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-4 py-2 rounded-xl font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2 rounded-xl font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <Printer className="w-4 h-4" />
-              <span>አትም / ፒዲኤፍ (Print / Save PDF)</span>
+              <span>አትም (Print)</span>
             </button>
+
             <button
+              type="button"
               onClick={onClose}
               className="text-slate-300 hover:text-white p-1.5 rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
               title="ዝጋ"
@@ -96,7 +129,10 @@ export const MasterGradeReportPdfModal: React.FC<MasterGradeReportPdfModalProps>
         </div>
 
         {/* Printable Document Body */}
-        <div className="p-6 sm:p-10 max-h-[82vh] overflow-y-auto space-y-8 bg-white print:p-0 print:overflow-visible">
+        <div
+          id="printable-master-grade-report"
+          className="p-6 sm:p-10 max-h-[82vh] overflow-y-auto space-y-8 bg-white print:p-0 print:overflow-visible"
+        >
           {programs.map((prog) => {
             const progStudents = students.filter((s) => s.program === prog);
             const progCourses = courses.filter((c) => c.program === prog);

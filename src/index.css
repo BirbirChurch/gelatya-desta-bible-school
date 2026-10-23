@@ -44,7 +44,7 @@
 
   html, body {
     background-color: #ffffff !important;
-    color: #000000 !important;
+    color: #0f172a !important;
     margin: 0 !important;
     padding: 0 !important;
     -webkit-print-color-adjust: exact !important;
@@ -54,36 +54,27 @@
     overflow: visible !important;
   }
 
-  /* When printing from within a document modal, isolate printable document */
-  body:has(#printable-graduation-transcript),
-  body:has(#printable-course-grade-report),
-  body:has(#printable-transcript-content) {
-    visibility: hidden !important;
-    background: #ffffff !important;
+  /* When printing an active document modal, hide non-modal siblings */
+  body.is-document-printing header,
+  body.is-document-printing footer,
+  body.is-document-printing nav,
+  body.is-document-printing aside,
+  body.is-document-printing .no-print {
+    display: none !important;
   }
 
   #printable-graduation-transcript,
-  #printable-graduation-transcript *,
   #printable-course-grade-report,
-  #printable-course-grade-report *,
   #printable-transcript-content,
-  #printable-transcript-content * {
-    visibility: visible !important;
-  }
-
-  #printable-graduation-transcript,
-  #printable-course-grade-report,
-  #printable-transcript-content {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+  #printable-master-grade-report {
+    display: block !important;
+    position: static !important;
     width: 100% !important;
     margin: 0 !important;
-    padding: 10px 14px !important;
+    padding: 0 !important;
     background: #ffffff !important;
     color: #0f172a !important;
-    display: block !important;
-    box-sizing: border-box !important;
+    overflow: visible !important;
   }
 
   /* Unpin fixed modal overlays */

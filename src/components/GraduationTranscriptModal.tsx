@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react';
-import { X, Printer, Download, Award, CheckCircle2, ShieldCheck, GraduationCap, Calendar, BookOpen } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { X, Printer, Download, Award, CheckCircle2, ShieldCheck, GraduationCap, Calendar, BookOpen, Loader2 } from 'lucide-react';
 import { Course, GradeBreakdown, OfficialSignaturesConfig, Student } from '../types.ts';
 import { calculateGradeDetails, getCourseAssessmentItems, getEffectiveGradeValues, getGradeKey, resolveGradeBreakdown } from '../utils/gradeCalculations.ts';
 import { getCurriculumForStudent } from '../data/curriculumCourses.ts';
 import { CHURCH_LOGO } from '../assets/logo.ts';
+import { downloadElementAsPdf, printElementDirectly } from '../utils/pdfExport.ts';
 
 interface GraduationTranscriptModalProps {
   student: Student;
@@ -155,8 +156,20 @@ export const GraduationTranscriptModal: React.FC<GraduationTranscriptModalProps>
     };
   }, [curriculum, allCourses, grades, student, currentYear, currentSemester]);
 
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    setIsExportingPdf(true);
+    try {
+      const filename = `Official_Graduation_Transcript_${student.id || student.name}_${student.program}.pdf`;
+      await downloadElementAsPdf('printable-graduation-transcript', filename);
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   const handlePrint = () => {
-    window.print();
+    printElementDirectly('printable-graduation-transcript');
   };
 
   const handleDownloadCSV = () => {
@@ -209,25 +222,43 @@ export const GraduationTranscriptModal: React.FC<GraduationTranscriptModalProps>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={isExportingPdf}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3.5 py-2 rounded-xl font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-60"
+              title="ሙሉውን የምረቃ ትራንስክሪፕት በፒዲኤፍ (.pdf) ፋይል በቀጥታ አውርድ"
+            >
+              {isExportingPdf ? (
+                <Loader2 className="w-4 h-4 animate-spin text-white" />
+              ) : (
+                <Download className="w-4 h-4 text-white" />
+              )}
+              <span>{isExportingPdf ? 'ፒዲኤፍ እየተዘጋጀ...' : 'PDF አውርድ (.pdf)'}</span>
+            </button>
+
+            <button
+              type="button"
               onClick={handleDownloadCSV}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3.5 py-2 rounded-xl font-bold transition-colors flex items-center gap-1.5 cursor-pointer border border-slate-700"
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-2 rounded-xl font-bold transition-colors flex items-center gap-1.5 cursor-pointer border border-slate-700"
               title="በCSV ሰነድ አውርድ"
             >
-              <Download className="w-4 h-4 text-emerald-400" />
-              <span>CSV አውርድ</span>
+              <Download className="w-3.5 h-3.5 text-emerald-400" />
+              <span>CSV</span>
             </button>
 
             <button
+              type="button"
               onClick={handlePrint}
-              className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs px-4 py-2 rounded-xl font-bold shadow-md transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs px-3.5 py-2 rounded-xl font-bold shadow-md transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <Printer className="w-4 h-4 text-amber-300" />
-              <span>አትም (Print / Save as PDF)</span>
+              <span>አትም (Print)</span>
             </button>
 
             <button
+              type="button"
               onClick={onClose}
               className="text-slate-400 hover:text-white p-1.5 rounded-lg transition-colors cursor-pointer text-lg"
             >

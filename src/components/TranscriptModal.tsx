@@ -1,9 +1,10 @@
-import React from 'react';
-import { X, Printer, ShieldCheck } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Printer, ShieldCheck, Download, Loader2 } from 'lucide-react';
 import { Course, GradeBreakdown, OfficialSignaturesConfig, Student } from '../types.ts';
 import { calculateGradeDetails, calculateStudentGPA, getCourseAssessmentItems, getEffectiveGradeValues, getGradeKey, resolveGradeBreakdown } from '../utils/gradeCalculations.ts';
 import { OFFICIAL_GRADING_SCALE } from '../data/initialData.ts';
 import { CHURCH_LOGO } from '../assets/logo.ts';
+import { downloadElementAsPdf, printElementDirectly } from '../utils/pdfExport.ts';
 
 interface TranscriptModalProps {
   student: Student;
@@ -64,30 +65,58 @@ export const TranscriptModal: React.FC<TranscriptModalProps> = ({
     };
   });
 
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    setIsExportingPdf(true);
+    try {
+      const filename = `Transcript_${student.id || student.name}_${currentYear}_Sem${currentSemester}.pdf`;
+      await downloadElementAsPdf('printable-transcript-content', filename);
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   const handlePrint = () => {
-    window.print();
+    printElementDirectly('printable-transcript-content');
   };
 
   return (
     <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full overflow-hidden my-auto border border-slate-300">
         {/* Modal Toolbar (hidden when printed) */}
-        <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center no-print border-b border-slate-800">
+        <div className="bg-slate-900 text-white px-6 py-4 flex flex-wrap justify-between items-center gap-3 no-print border-b border-slate-800">
           <div className="flex items-center gap-2">
             <Printer className="w-5 h-5 text-amber-400" />
             <h3 className="font-bold text-sm">የትራንስክሪፕት ቅድመ-እይታ (Transcript Preview)</h3>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
-              onClick={handlePrint}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-4 py-2 rounded-xl font-bold shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer"
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={isExportingPdf}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3.5 py-2 rounded-xl font-bold shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+              title="ትራንስክሪፕቱን በፒዲኤፍ (.pdf) ፋይል በቀጥታ አውርድ"
             >
-              <Printer className="w-4 h-4" />
-              <span>አትም (Print / Save as PDF)</span>
+              {isExportingPdf ? (
+                <Loader2 className="w-4 h-4 animate-spin text-white" />
+              ) : (
+                <Download className="w-4 h-4 text-white" />
+              )}
+              <span>{isExportingPdf ? 'ፒዲኤፍ እየተዘጋጀ...' : 'PDF አውርድ (.pdf)'}</span>
             </button>
             <button
+              type="button"
+              onClick={handlePrint}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2 rounded-xl font-bold shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <Printer className="w-4 h-4" />
+              <span>አትም (Print)</span>
+            </button>
+            <button
+              type="button"
               onClick={onClose}
-              className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors text-lg"
+              className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors text-lg cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
